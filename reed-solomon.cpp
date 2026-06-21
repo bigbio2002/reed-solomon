@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include "galois.h"
 
 Polynomial RS_generator_polynomial(const unsigned int nsym)
@@ -101,6 +102,38 @@ RS_correct_errata(const Polynomial &msg_in, const Polynomial &synd, const Polyno
 		coef_pos[p] = msg_in.size() - 1 - p;
 	}
 	Polynomial err_loc = RS_find_errata_locator(coef_pos);
-	Polynomial err_eval = RS_find_error_evaluator(
+
+	Polynomial synd_reverse = synd;
+	std::reverse(synd_reverse.begin(), synd_reverse.end());
+
+	Polynomial err_eval = RS_find_error_evaluator(synd_reverse, err_loc, err_loc.size()-1);
+	std::reverse(err_eval.begin(), err_eval.end());
+
+	Polynomial X_tmp;
+	int l_tmp;
+	for(int i=0; i < coef_pos.size(); i++)
+	{
+		l = 255 - coef_pos[i];
+		X_tmp.push_back(GF_pow(2, -l_tmp));
 	}
+
+	Polynomial E_mag(msg_in.size());
+	size_t Xlength = X_tmp.size();
+	unsigned int Xi_inv;
+
+	for(int i=0; i < Xlength; i++)
+	{
+		Xi_inv = GF_inverse(X_tmp[i]);
+
+		Polynomial err_loc_prime_tmp;
+		for(int j=0; j < Xlength; j++)
+		{
+			if(j != i)
+				err_loc_prime_tmp.push_back(GF_subtract(1, GF_multiply(Xi_inv, X_tmp[j])));
+		}
+
+		int err_loc_prime = 1;
+		for(std::iter coef=err_loc_prime_tmp.begin(); coef != err_loc_prime_tmp.end(); coef++)
+		{
+			/* bookmark: line 259 in galois.py */
 }
