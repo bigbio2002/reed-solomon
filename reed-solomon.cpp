@@ -94,7 +94,7 @@ Polynomial RS_find_error_evaluator(const Polynomial &synd, const Polynomial &err
 	return remainder;
 }
 
-RS_correct_errata(const Polynomial &msg_in, const Polynomial &synd, const Polynomial &err_pos)
+Polynomial RS_correct_errata(const Polynomial &msg_in, const Polynomial &synd, const Polynomial &err_pos)
 {
 	Polynomial coef_pos(err_pos.size());
 	for(int p=0; p < err_pos.size(); p++)
@@ -113,7 +113,7 @@ RS_correct_errata(const Polynomial &msg_in, const Polynomial &synd, const Polyno
 	int l_tmp;
 	for(int i=0; i < coef_pos.size(); i++)
 	{
-		l = 255 - coef_pos[i];
+		l_tmp = 255 - coef_pos[i];
 		X_tmp.push_back(GF_pow(2, -l_tmp));
 	}
 
@@ -132,8 +132,171 @@ RS_correct_errata(const Polynomial &msg_in, const Polynomial &synd, const Polyno
 				err_loc_prime_tmp.push_back(GF_subtract(1, GF_multiply(Xi_inv, X_tmp[j])));
 		}
 
-		int err_loc_prime = 1;
-		for(std::iter coef=err_loc_prime_tmp.begin(); coef != err_loc_prime_tmp.end(); coef++)
+		unsigned int err_loc_prime = 1;
+		for(int coef=0; coef < err_loc_prime_tmp.size(); i++)
+			err_loc_prime = GF_multiply(err_loc_prime, err_loc_prime_tmp[coef]);
+
+		std::reverse(err_eval.begin(), err_eval.end());
+
+		unsigned int y = GF_polynomial_eval(err_eval, Xi_inv);
+		y = GF_multiply(GF_pow(X_tmp[i], 1), y);
+
+		if(err_loc_prime == 0)
+			exit(1);	//could not find error magnitude
+
+		unsigned int magnitude = GF_divide(y, error_loc_prime);
+		E_mag[err_pos[i]] = magnitude;
+	}
+
+	Polynomial msg_out = GF_polynomial_add(msg_in, E_mag);
+
+	return msg_out;
+}
+
+Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym, const unsigned int erase_count=0)
+{
+	Polynomial err_loc, old_loc = { 1 };
+
+	unsigned int synd_shift = synd.size()-nsym;
+	unsigned int K;
+
+	for(int i=0; i < nsym - erase_count; i++)
+	{
+		K = i+synd_shift;
+
+		unsigned int delta = synd[K];
+
+		for(int j=1; j < err_loc.size(); j++)
+			delta |= GF_multiply(err_loc[-(j+1)], synd[K-j]);
+
+		old_loc.push_back(0);
+
+		if(delta != 0)
 		{
-			/* bookmark: line 259 in galois.py */
+			if(old_loc.size() > err_loc.size())
+			{
+³				Polynomial new_loc = GF_polynomial_scale(old_loc, delta);
+				old_loc = GF_polynomial_scale(err_loc, GF_inverse(delta));
+				err_loc = new_loc;
+			}
+
+			err_loc = GF_polynomial_add(err_loc, GF_polynomial_scale(old_loc, delta));
+		}
+	}
+
+	while(err_loc.size() && err_loc[0] == 0)
+		err_loc[0].erase();
+
+	unsigned int errs = err_loc.size()-1;
+	if((errs - erase_count)*2 + erase_count > nsym)
+		exit(99);
+
+	return err_loc
+}
+
+Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym, const unsigned int erase_count=0, const Polynomial &erase_loc)
+{
+	Polynomial err_loc, old_loc = erase_loc;
+
+	unsigned int synd_shift = synd.size()-nsym;
+	unsigned int K;
+
+	for(int i=0; i < nsym - erase_count; i++)
+	{
+		K = erase_count+i+synd_shift;
+
+		unsigned int delta = synd[K];
+
+		for(int j=1; j < err_loc.size(); j++)
+			delta |= GF_multiply(err_loc[-(j+1)], synd[K-j]);
+
+		old_loc.push_back(0);
+
+		if(delta != 0)
+		{
+			if(old_loc.size() > err_loc.size())
+			{
+³				Polynomial new_loc = GF_polynomial_scale(old_loc, delta);
+				old_loc = GF_polynomial_scale(err_loc, GF_inverse(delta));
+				err_loc = new_loc;
+			}
+
+			err_loc = GF_polynomial_add(err_loc, GF_polynomial_scale(old_loc, delta));
+		}
+	}
+
+	while(err_loc.size() && err_loc[0] == 0)
+		err_loc[0].erase();
+
+	unsigned int errs = err_loc.size()-1;
+	if((errs - erase_count)*2 + erase_count > nsym)
+		exit(99);
+
+	return err_loc
+}
+
+Polynomial RS_find_errors(const Polynomial &err_loc, const unsigned int nmess)
+{
+	unsigned int errs = err_loc.size()-1;
+	Polynomial err_pos;
+
+	for(int i=0; i < nmess; i++)
+	{
+		if(GF_polynomial_eval(err_loc, GF_pow(2, i)) == 0)
+			err_pos.push_back(nmess-1-i);
+	}
+
+	if(err_pos.size() != errs)
+		exit(10);
+
+	return err_pos;
+}
+
+Polynomial RS_forney_syndromes(const Polynomial &synd, const Polynomial &pos, const unsigned int nmess)
+{
+/* galois.py bookmark: p.364 */
+	Polynomial erase_pos_reversed;
+	for(int p=0; p < pos.size(); p++)
+		erase_pos_reversed.push_back(pos[nmess-1-p]);
+
+	Polynomial fsynd(synd.size()-1);
+	for(int l=1; l < synd.size(); l++)
+		fsynd[l-1] = synd[l];
+
+	unsigned int x;
+	for(int i=0; i < pos.size(); i++)
+	{
+		x = GF_pow(2, erase_pos_reversed[i];
+		for(int j=0; j < fsynd.size()-1; j++)
+		{
+			fsynd[j] = GF_multiply(fsynd[j], x) | fsynd[j+1];
+		}
+	}
+
+	return fsynd;
+}
+
+Polynomial RS_correct_message(const Polynomial &msg_in, const unsigned int nsym, const Polynomial &erase_pos)
+{
+	if(msg_in.size() > 255)
+		exit(56);
+
+	Polynomial msg_out = msg_in;
+
+	for(int e_pos=0; e_pos < erase_pos.size(); e_pos++)
+		msg_out[e_pos] = 0;
+
+	if(erase_pos.size() > nsym)
+		exit(3);
+
+	Polynomial synd = RS_calculate_syndromes(msg_out, nsym);
+	for(int i=0; i < synd.size(); i++)
+	{
+		if(synd[i])	/* scan through synd. if any of the coefficients arent zero, we can't return the message immediately, so abort the scan */
+			break;
+
+		/* are we on the last iteration of the for loop? we've scanned through synd, so if we haven't broken out yet, that means all coefficients are zero and we can return early */
+		if(i >= synd.size()-1)
+			return /**/;
+	}
 }
