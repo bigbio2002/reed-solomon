@@ -51,7 +51,7 @@ unsigned int GF_inverse(const unsigned int x)
 	return GF_exponents[(255 - GF_logarithms[x])];
 }
 
-Polynomial GF_polynomial_scalar(const Polynomial &p, const unsigned int x)
+Polynomial GF_polynomial_scale(const Polynomial &p, const unsigned int x)
 {
 	Polynomial r(p.size());
 

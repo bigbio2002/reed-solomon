@@ -16,7 +16,7 @@ unsigned int GF_divide(const unsigned int x, const unsigned int y);
 unsigned int GF_pow(const unsigned int x, const unsigned int power);
 unsigned int GF_inverse(const unsigned int x);
 
-Polynomial GF_polynomial_scalar(const Polynomial &p, const unsigned int x);
+Polynomial GF_polynomial_scale(const Polynomial &p, const unsigned int x);
 Polynomial GF_polynomial_add(const Polynomial &p, const Polynomial &q);
 Polynomial GF_polynomial_multiply(const Polynomial &p, const Polynomial &q);
 unsigned int GF_polynomial_eval(const Polynomial &poly, const unsigned int x);

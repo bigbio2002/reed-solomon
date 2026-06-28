@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iterator>
 #include <algorithm>
 #include "galois.h"
 
@@ -42,7 +43,7 @@ Polynomial RS_calculate_syndromes(const Polynomial &msg, const unsigned int nsym
 {
 	Polynomial syndrome(nsym);
 
-	for(int i=0, i < nsym; i++)
+	for(int i=0; i < nsym; i++)
 	{
 		syndrome[i] = GF_polynomial_eval(msg, GF_pow(2, i));
 	}
@@ -58,11 +59,11 @@ Polynomial RS_check(const Polynomial &msg, const unsigned int nsym)
 	Polynomial check_max = RS_calculate_syndromes(msg, nsym);
 	int maxval = 0;
 
-	for(std::iter i = check_max.begin(); i != check_max.end(); i++)
+	for(std::iter it = check_max.begin(); it != check_max.end(); it++)
 	{
-		if(check_max[i] > maxval)
+		if(check_max[it] > maxval)
 		{
-			maxval = check_max[i];
+			maxval = check_max[it];
 		}
 	}
 
@@ -175,7 +176,7 @@ Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym
 		{
 			if(old_loc.size() > err_loc.size())
 			{
-³				Polynomial new_loc = GF_polynomial_scale(old_loc, delta);
+				Polynomial new_loc = GF_polynomial_scale(old_loc, delta);
 				old_loc = GF_polynomial_scale(err_loc, GF_inverse(delta));
 				err_loc = new_loc;
 			}
@@ -191,7 +192,7 @@ Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym
 	if((errs - erase_count)*2 + erase_count > nsym)
 		exit(99);
 
-	return err_loc
+	return err_loc;
 }
 
 Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym, const unsigned int erase_count=0, const Polynomial &erase_loc)
@@ -216,7 +217,7 @@ Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym
 		{
 			if(old_loc.size() > err_loc.size())
 			{
-³				Polynomial new_loc = GF_polynomial_scale(old_loc, delta);
+				Polynomial new_loc = GF_polynomial_scale(old_loc, delta);
 				old_loc = GF_polynomial_scale(err_loc, GF_inverse(delta));
 				err_loc = new_loc;
 			}
@@ -232,7 +233,7 @@ Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym
 	if((errs - erase_count)*2 + erase_count > nsym)
 		exit(99);
 
-	return err_loc
+	return err_loc;
 }
 
 Polynomial RS_find_errors(const Polynomial &err_loc, const unsigned int nmess)
@@ -254,7 +255,6 @@ Polynomial RS_find_errors(const Polynomial &err_loc, const unsigned int nmess)
 
 Polynomial RS_forney_syndromes(const Polynomial &synd, const Polynomial &pos, const unsigned int nmess)
 {
-/* galois.py bookmark: p.364 */
 	Polynomial erase_pos_reversed;
 	for(int p=0; p < pos.size(); p++)
 		erase_pos_reversed.push_back(pos[nmess-1-p]);
@@ -266,7 +266,7 @@ Polynomial RS_forney_syndromes(const Polynomial &synd, const Polynomial &pos, co
 	unsigned int x;
 	for(int i=0; i < pos.size(); i++)
 	{
-		x = GF_pow(2, erase_pos_reversed[i];
+		x = GF_pow(2, erase_pos_reversed[i]);
 		for(int j=0; j < fsynd.size()-1; j++)
 		{
 			fsynd[j] = GF_multiply(fsynd[j], x) | fsynd[j+1];
@@ -297,6 +297,26 @@ Polynomial RS_correct_message(const Polynomial &msg_in, const unsigned int nsym,
 
 		/* are we on the last iteration of the for loop? we've scanned through synd, so if we haven't broken out yet, that means all coefficients are zero and we can return early */
 		if(i >= synd.size()-1)
-			return /**/;
+			return /* TODO */;
 	}
+
+	Polynomial fsynd = RS_forney_syndromes(synd, erase_pos, msg_out.size());
+	Polynomial err_loc = RS_find_error_locator(fsynd, nsym, erase_pos.size());
+	std::reverse(err_loc.begin(), err_loc.end());
+	Polynomial err_pos = RS_find_errors(err_loc, msg_out.size());
+	if(err_pos.empty())
+		exit(34);
+
+	Polynomial positions = erase_pos;
+	positions.insert(positions.end(), err_pos.begin(), err_pos.end());
+	msg_out = RS_correct_errata(msg_out, synd, positions);
+
+	synd = RS_calculate_syndromes(msg_out, nsym);
+	for(int i=0; i < synd.size(); i++)
+	{
+		if(synd[i] > 0)
+			exit(9);
+	}
+
+	return /* TODO */;
 }
