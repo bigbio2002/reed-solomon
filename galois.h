@@ -20,7 +20,7 @@ Polynomial GF_polynomial_scale(const Polynomial &p, const unsigned int x);
 Polynomial GF_polynomial_add(const Polynomial &p, const Polynomial &q);
 Polynomial GF_polynomial_multiply(const Polynomial &p, const Polynomial &q);
 unsigned int GF_polynomial_eval(const Polynomial &poly, const unsigned int x);
-/* std::pair<Polynomial,Polynomial> GF_polynomial_divide(const Polynomial &dividend, const Polynomial &divisor); */
+std::pair<Polynomial,Polynomial> GF_polynomial_divide(const Polynomial &dividend, const Polynomial &divisor);
 Polynomial GF_polynomial_divide_remainder(const Polynomial &dividend, const Polynomial &divisor);
 
 unsigned int qr_check_format(unsigned int fmt);
@@ -30,6 +30,6 @@ int qr_decode_format(unsigned int fmt);
 unsigned int GF_add(const unsigned int x, const unsigned int y);
 unsigned int GF_subtract(const unsigned int x, const unsigned int y);
 unsigned int carryless_multiply(const unsigned int x, const unsigned int y);
-unsigned int GF_multiply_noLUT(const unsigned int x, const unsigned int y, const unsigned int prim=0, const unsigned int field_char_full=256, const bool carryless=true);
+unsigned int GF_multiply_noLUT(unsigned int x, unsigned int y, const unsigned int prim=0, const unsigned int field_char_full=256, const bool carryless=true);
 
 #endif

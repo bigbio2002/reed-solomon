@@ -95,7 +95,7 @@ unsigned int GF_polynomial_eval(const Polynomial &poly, const unsigned int x)
 	return y;
 }
 
-/* std::pair<Polynomial,Polynomial> GF_polynomial_divide(const Polynomial &dividend, const Polynomial &divisor)
+std::pair<Polynomial,Polynomial> GF_polynomial_divide(const Polynomial &dividend, const Polynomial &divisor)
 {
 	Polynomial msg_out(dividend.begin(), dividend.end());
 	unsigned int coef;
@@ -118,8 +118,8 @@ unsigned int GF_polynomial_eval(const Polynomial &poly, const unsigned int x)
 	int separator = msg_out.size() - (divisor.size()-1);
 	Polynomial left(msg_out.begin(), msg_out.begin()+separator);
 	Polynomial right(msg_out.begin()+separator, msg_out.end());
-	return [left, right];	// quotient and remainder
-} */
+	return std::make_pair(left, right);	// quotient and remainder
+}
 
 Polynomial GF_polynomial_divide_remainder(const Polynomial &dividend, const Polynomial &divisor)
 {
@@ -223,7 +223,7 @@ unsigned int carryless_multiply(const unsigned int x, const unsigned int y)
 	return z;
 }
 
-unsigned int GF_multiply_noLUT(const unsigned int x, const unsigned int y, const unsigned int prim, const unsigned int field_char_full, const bool carryless)
+unsigned int GF_multiply_noLUT(unsigned int x, unsigned int y, const unsigned int prim, const unsigned int field_char_full, const bool carryless)
 {
 	unsigned int r = 0;
 

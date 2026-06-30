@@ -54,20 +54,15 @@ Polynomial RS_calculate_syndromes(const Polynomial &msg, const unsigned int nsym
 	return out_synd;
 }
 
-Polynomial RS_check(const Polynomial &msg, const unsigned int nsym)
+bool RS_check(const Polynomial &msg, const unsigned int nsym)
 {
 	Polynomial check_max = RS_calculate_syndromes(msg, nsym);
-	int maxval = 0;
 
-	for(std::iter it = check_max.begin(); it != check_max.end(); it++)
-	{
-		if(check_max[it] > maxval)
-		{
-			maxval = check_max[it];
-		}
-	}
+	for(int i=0; i < check_max.size(); i++)
+		if(check_max[i] > 0)
+			return 0;
 
-	return(maxval == 0);
+	return 1;
 }
 
 Polynomial RS_find_errata_locator(const Polynomial &e_pos)
@@ -76,7 +71,7 @@ Polynomial RS_find_errata_locator(const Polynomial &e_pos)
 	Polynomial add2(2);
 	add2[1] = 0;
 
-	for(std::iter i=e_pos.begin(); i != e_pos.end(); i++)
+	for(int i=0; i < e_pos.size(); i++)
 	{
 		add2[0] = GF_pow(2, i);
 		e_loc = GF_polynomial_multiply(e_loc, GF_polynomial_add(add1, add2));
@@ -145,7 +140,7 @@ Polynomial RS_correct_errata(const Polynomial &msg_in, const Polynomial &synd, c
 		if(err_loc_prime == 0)
 			exit(1);	//could not find error magnitude
 
-		unsigned int magnitude = GF_divide(y, error_loc_prime);
+		unsigned int magnitude = GF_divide(y, err_loc_prime);
 		E_mag[err_pos[i]] = magnitude;
 	}
 
@@ -154,48 +149,7 @@ Polynomial RS_correct_errata(const Polynomial &msg_in, const Polynomial &synd, c
 	return msg_out;
 }
 
-Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym, const unsigned int erase_count=0)
-{
-	Polynomial err_loc, old_loc = { 1 };
-
-	unsigned int synd_shift = synd.size()-nsym;
-	unsigned int K;
-
-	for(int i=0; i < nsym - erase_count; i++)
-	{
-		K = i+synd_shift;
-
-		unsigned int delta = synd[K];
-
-		for(int j=1; j < err_loc.size(); j++)
-			delta |= GF_multiply(err_loc[-(j+1)], synd[K-j]);
-
-		old_loc.push_back(0);
-
-		if(delta != 0)
-		{
-			if(old_loc.size() > err_loc.size())
-			{
-				Polynomial new_loc = GF_polynomial_scale(old_loc, delta);
-				old_loc = GF_polynomial_scale(err_loc, GF_inverse(delta));
-				err_loc = new_loc;
-			}
-
-			err_loc = GF_polynomial_add(err_loc, GF_polynomial_scale(old_loc, delta));
-		}
-	}
-
-	while(err_loc.size() && err_loc[0] == 0)
-		err_loc[0].erase();
-
-	unsigned int errs = err_loc.size()-1;
-	if((errs - erase_count)*2 + erase_count > nsym)
-		exit(99);
-
-	return err_loc;
-}
-
-Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym, const unsigned int erase_count=0, const Polynomial &erase_loc)
+Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym, const Polynomial &erase_loc, const unsigned int erase_count=0)
 {
 	Polynomial err_loc, old_loc = erase_loc;
 
@@ -227,7 +181,51 @@ Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym
 	}
 
 	while(err_loc.size() && err_loc[0] == 0)
-		err_loc[0].erase();
+		err_loc.erase(err_loc.begin());
+
+	unsigned int errs = err_loc.size()-1;
+	if((errs - erase_count)*2 + erase_count > nsym)
+		exit(99);
+
+	return err_loc;
+}
+
+Polynomial RS_find_error_locator(const Polynomial &synd, const unsigned int nsym, const unsigned int erase_count=0)
+{
+	if(erase_count)
+		exit(3);	// there shouldn't be an erase count if there's no location
+
+	Polynomial err_loc, old_loc = {1};
+
+	unsigned int synd_shift = synd.size()-nsym;
+	unsigned int K;
+
+	for(int i=0; i < nsym - erase_count; i++)
+	{
+		K = erase_count+i+synd_shift;
+
+		unsigned int delta = synd[K];
+
+		for(int j=1; j < err_loc.size(); j++)
+			delta |= GF_multiply(err_loc[-(j+1)], synd[K-j]);
+
+		old_loc.push_back(0);
+
+		if(delta != 0)
+		{
+			if(old_loc.size() > err_loc.size())
+			{
+				Polynomial new_loc = GF_polynomial_scale(old_loc, delta);
+				old_loc = GF_polynomial_scale(err_loc, GF_inverse(delta));
+				err_loc = new_loc;
+			}
+
+			err_loc = GF_polynomial_add(err_loc, GF_polynomial_scale(old_loc, delta));
+		}
+	}
+
+	while(err_loc.size() && err_loc[0] == 0)
+		err_loc.erase(err_loc.begin());
 
 	unsigned int errs = err_loc.size()-1;
 	if((errs - erase_count)*2 + erase_count > nsym)
@@ -276,7 +274,7 @@ Polynomial RS_forney_syndromes(const Polynomial &synd, const Polynomial &pos, co
 	return fsynd;
 }
 
-Polynomial RS_correct_message(const Polynomial &msg_in, const unsigned int nsym, const Polynomial &erase_pos)
+std::pair<Polynomial,Polynomial> RS_correct_message(const Polynomial &msg_in, const unsigned int nsym, const Polynomial &erase_pos)
 {
 	if(msg_in.size() > 255)
 		exit(56);
@@ -297,7 +295,11 @@ Polynomial RS_correct_message(const Polynomial &msg_in, const unsigned int nsym,
 
 		/* are we on the last iteration of the for loop? we've scanned through synd, so if we haven't broken out yet, that means all coefficients are zero and we can return early */
 		if(i >= synd.size()-1)
-			return /* TODO */;
+		{
+			Polynomial left(msg_out.begin(), msg_out.end()-nsym);
+			Polynomial right(msg_out.end()-nsym, msg_out.end());
+			return std::make_pair(left, right);
+		}
 	}
 
 	Polynomial fsynd = RS_forney_syndromes(synd, erase_pos, msg_out.size());
@@ -318,5 +320,7 @@ Polynomial RS_correct_message(const Polynomial &msg_in, const unsigned int nsym,
 			exit(9);
 	}
 
-	return /* TODO */;
+	Polynomial left(msg_out.begin(), msg_out.end()-nsym);
+	Polynomial right(msg_out.end()-nsym, msg_out.end());
+	return std::make_pair(left, right);
 }
